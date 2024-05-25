@@ -1,5 +1,7 @@
 package com.intafy.webviewfotochooser;
 
+import static com.google.android.material.internal.ContextUtils.getActivity;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
@@ -40,11 +42,12 @@ public class MainActivity extends AppCompatActivity {
             public boolean onShowFileChooser(
                     WebView view,ValueCallback<Uri[]> filePathCallBack,
                     WebChromeClient.FileChooserParams fileChooserParams){
-            super.onShowFileChooser(view,filePathCallBack,fileChooserParams);
-            if(mFilePathCallBack!=null) mFilePathCallBack.onReceiveValue(null);
+            if(mFilePathCallBack!=null) {
+                mFilePathCallBack.onReceiveValue(null);
+            }
                 mFilePathCallBack=filePathCallBack;
                 Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                if(takePictureIntent.resolveActivity(getPackageManager())!=null){
+                if(takePictureIntent.resolveActivity(getApplicationContext().getPackageManager())!=null){
                     File photoFile = null;
                     try{
                         photoFile=createImageFile();
@@ -60,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent contentSelectionIntent = new Intent(Intent.ACTION_GET_CONTENT);
                 contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE);
-                contentSelectionIntent.setType("image*");
+                contentSelectionIntent.setType("image/*");
                 Intent[] intentArray;
                 if(takePictureIntent!=null){
                     intentArray=new Intent[]{takePictureIntent};
@@ -70,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
                 chooserIntent.putExtra(Intent.EXTRA_INTENT,contentSelectionIntent);
                 chooserIntent.putExtra(Intent.EXTRA_TITLE,"Image Chooser");
                 chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS,intentArray);
-                startActivityForResult(chooserIntent,REQ_CODE);
+                startActivityForResult(contentSelectionIntent,REQ_CODE);
                 return true;
             }
         });
@@ -85,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
                 ".jpeg",/*suffix*/
                 storageDir/*directory*/
         );
-        return  imageFile;
+        return imageFile;
     }
     private class MyWeb extends WebViewClient{
         @Override
@@ -108,15 +111,13 @@ public class MainActivity extends AppCompatActivity {
                     results=new Uri[]{Uri.parse(mCameraPhotoPath)};
                 } else {
                     String dataString = data.getDataString();
-                    if(dataString!=null) results = new Uri[]{Uri.parse(mCameraPhotoPath)};
+                    if(dataString!=null) results = new Uri[]{Uri.parse(dataString)};
                     }
                 }
             }
         mFilePathCallBack.onReceiveValue(results);
         mFilePathCallBack=null;
     }
-
-
     @Override
     public void onBackPressed() {
         if(webView.canGoBack())webView.goBack();
