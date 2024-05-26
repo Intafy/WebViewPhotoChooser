@@ -42,24 +42,29 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,ValueCallback<Uri[]> filePathCallBack,
                     WebChromeClient.FileChooserParams fileChooserParams){
             super.onShowFileChooser(view,filePathCallBack,fileChooserParams);
-            if(mFilePathCallBack!=null) {
-                mFilePathCallBack.onReceiveValue(null);
-            }
+//            if(mFilePathCallBack!=null) {
+//                mFilePathCallBack.onReceiveValue(null);
+//            }
                 mFilePathCallBack=filePathCallBack;
                 Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                Log.d("MyLog","Intent has created");
                 if(takePictureIntent.resolveActivity(getPackageManager())!=null){
                     File photoFile = null;
                     try{
                         photoFile=createImageFile();
                         takePictureIntent.putExtra("PhotoPath",mCameraPhotoPath);
+                        Log.d("MyLog","Intent and file has created");
                     }catch (IOException e){
                         Log.e(TAG,"Unable to create Image File");
                     }
                     if(photoFile!=null){
-//                        mCameraPhotoPath = "file:"+photoFile.getAbsolutePath();
-                        mCameraPhotoPath = "file:"+FileProvider.getUriForFile(MainActivity.this,"com.intafy.webviewfotochooser.provider",photoFile);
-                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,Uri.fromFile(photoFile));
-                    }else takePictureIntent = null;
+                        mCameraPhotoPath = "file:"+photoFile.getAbsolutePath();
+//                        mCameraPhotoPath = "file:"+FileProvider.getUriForFile(MainActivity.this,"com.intafy.webviewfotochooser.provider",photoFile);
+                        Log.d("MyLog","Path to file has created");
+                        Uri imageUri=FileProvider.getUriForFile(MainActivity.this,"com.intafy.webviewfotochooser.provider",photoFile);
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,imageUri);
+                    }
+//                    else takePictureIntent = null;
                 }
 
 //                Intent contentSelectionIntent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -89,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
                 ".jpeg",/*suffix*/
                 storageDir/*directory*/
         );
+        Log.d("MyLog","File has created");
         return  imageFile;
     }
     private static class MyWeb extends WebViewClient{
@@ -99,13 +105,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     @Override
-    public void onActivityResult(int requestCode,int resultCode,Intent data){
-        if(requestCode!=REQ_CODE||mFilePathCallBack==null){
-            super.onActivityResult(requestCode,resultCode,data);
-            return;
-        }
+    public void onActivityResult(int requestCode,int resultCode,Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE) {
+            if (mFilePathCallBack == null) return;
+//            mFilePathCallBack.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+//            mFilePathCallBack = null;
         Uri[] results = null;
-
         if(resultCode == Activity.RESULT_OK){
             if(data==null) {
                 if(mCameraPhotoPath!=null){
@@ -117,9 +123,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         mFilePathCallBack.onReceiveValue(results);
-//        mFilePathCallBack.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));
 
         mFilePathCallBack=null;
+        }
     }
 
 
