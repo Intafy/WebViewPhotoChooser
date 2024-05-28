@@ -3,6 +3,7 @@ package com.intafy.webviewfotochooser;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -18,6 +19,7 @@ import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 
@@ -27,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private String mCameraPhotoPath;
     private final int REQ_CODE = 100;
     private final String TAG = "Error tag";
+    private final ArrayList<Intent> dataList= new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
         webView=findViewById(R.id.webView);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.loadUrl("https://postimages.org/ru/");
+//        webView.loadUrl("https://ru.imgbb.com/");
         webView.setWebViewClient(new MyWeb());
         webView.setWebChromeClient(new WebChromeClient(){
             @Override
@@ -45,28 +49,31 @@ public class MainActivity extends AppCompatActivity {
 //            if(mFilePathCallBack!=null) {
 //                mFilePathCallBack.onReceiveValue(null);
 //            }
-                mFilePathCallBack=filePathCallBack;
-                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                Log.d("MyLog","Intent has created");
-                if(takePictureIntent.resolveActivity(getPackageManager())!=null){
-                    File photoFile = null;
-                    try{
-                        photoFile=createImageFile();
-                        takePictureIntent.putExtra("PhotoPath",mCameraPhotoPath);
-                        Log.d("MyLog","Intent and file has created");
-                    }catch (IOException e){
-                        Log.e(TAG,"Unable to create Image File");
+                ArrayList<Intent>intentArray =new ArrayList<>();
+                Intent takePictureIntent;
+                for (int i=0;i<2;i++) {
+                    mFilePathCallBack=filePathCallBack;
+                    takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    intentArray.add(takePictureIntent);
+                    Log.d("MyLog","Intent has created");
+                    if(takePictureIntent.resolveActivity(getPackageManager())!=null) {
+                        File photoFile = null;
+                        try {
+                            photoFile = createImageFile();
+                            takePictureIntent.putExtra("PhotoPath", mCameraPhotoPath);
+                            Log.d("MyLog", "Intent and file has created");
+                        } catch (IOException e) {
+                            Log.e(TAG, "Unable to create Image File");
+                        }
+                        if (photoFile != null) {
+                            mCameraPhotoPath = "file:" + photoFile.getAbsolutePath();
+                            Log.d("MyLog", "Path to file has created");
+                            Uri imageUri = FileProvider.getUriForFile(MainActivity.this, "com.intafy.webviewfotochooser.provider", photoFile);
+                            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                            takePictureIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                        }
                     }
-                    if(photoFile!=null){
-                        mCameraPhotoPath = "file:"+photoFile.getAbsolutePath();
-//                        mCameraPhotoPath = "file:"+FileProvider.getUriForFile(MainActivity.this,"com.intafy.webviewfotochooser.provider",photoFile);
-                        Log.d("MyLog","Path to file has created");
-                        Uri imageUri=FileProvider.getUriForFile(MainActivity.this,"com.intafy.webviewfotochooser.provider",photoFile);
-                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,imageUri);
-                    }
-//                    else takePictureIntent = null;
                 }
-
 //                Intent contentSelectionIntent = new Intent(Intent.ACTION_GET_CONTENT);
 //                contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE);
 //                contentSelectionIntent.setType("image*");
@@ -79,7 +86,10 @@ public class MainActivity extends AppCompatActivity {
 //                chooserIntent.putExtra(Intent.EXTRA_INTENT,contentSelectionIntent);
 //                chooserIntent.putExtra(Intent.EXTRA_TITLE,"Image Chooser");
 //                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS,intentArray);
-                startActivityForResult(takePictureIntent,REQ_CODE);
+
+                for(int i=0;i<intentArray.size();i++) {
+                    startActivityForResult(intentArray.get(i), REQ_CODE);
+                }
                 return true;
             }
         });
@@ -107,26 +117,31 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode,int resultCode,Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        dataList.add(data);
+        Uri[] results = new Uri[0];
         if (requestCode == REQ_CODE) {
             if (mFilePathCallBack == null) return;
-//            mFilePathCallBack.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
-//            mFilePathCallBack = null;
-        Uri[] results = null;
-        if(resultCode == Activity.RESULT_OK){
-            if(data==null) {
-                if(mCameraPhotoPath!=null){
-                    results=new Uri[]{Uri.parse(mCameraPhotoPath)};
-                } else {
-                    String dataString = data.getDataString();
-                    if(dataString!=null) results = new Uri[]{Uri.parse(mCameraPhotoPath)};
+            results = null;
+            if (resultCode == Activity.RESULT_OK) {
+                if (data == null) {
+                    if (mCameraPhotoPath != null) {
+                        results = new Uri[]{Uri.parse(mCameraPhotoPath)};
+                    } else {
+                        for(int i=0;i<dataList.size();i++) {
+                            String dataString = dataList.get(i).getDataString();
+                            if (dataString != null) {
+                                results = new Uri[]{Uri.parse(dataString)};
+                            }
+                        }
                     }
                 }
             }
-        mFilePathCallBack.onReceiveValue(results);
-
-        mFilePathCallBack=null;
         }
+            mFilePathCallBack.onReceiveValue(results);
+            mFilePathCallBack = null;
+
     }
+
 
 
     @Override
